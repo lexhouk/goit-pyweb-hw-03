@@ -1,6 +1,14 @@
-from logging import basicConfig, error, INFO, info
+from logging import INFO, basicConfig, error, info
 from pathlib import Path
 from sys import argv
+
+
+def scan(folder: Path) -> None:
+    for item in folder.iterdir():
+        if item.is_dir():
+            scan(item)
+        else:
+            info(item)
 
 
 def main() -> None:
@@ -14,8 +22,11 @@ def main() -> None:
         if path.exists():
             if path.is_dir():
                 target = argv[2] if len(argv) > 2 else 'dist'
+
                 info(f'Copy files from folder "{path.absolute().name}" to '
                      f'"{target}".')
+
+                scan(path)
             else:
                 error(f'The source "{source}" is not folder.')
         else:
