@@ -1,5 +1,6 @@
+from concurrent.futures import ProcessPoolExecutor
 from logging import DEBUG, getLogger, StreamHandler, Formatter
-from multiprocessing import cpu_count, Process, Semaphore
+from multiprocessing import cpu_count
 from time import perf_counter
 
 Numbers = list[int]
@@ -7,7 +8,7 @@ Divisors = list[Numbers]
 
 logger = getLogger()
 handler = StreamHandler()
-handler.setFormatter(Formatter('%(processName)s: %(message)s'))
+handler.setFormatter(Formatter('%(processName)s %(levelname)s: %(message)s'))
 logger.addHandler(handler)
 logger.setLevel(DEBUG)
 
@@ -51,11 +52,6 @@ def factorize(*number: Numbers) -> Divisors:
     return all_divisors
 
 
-def worker(number: int, condition) -> None:
-    with condition:
-        factorize(number)
-
-
 def main() -> None:
     numbers = list(map(int, input('Numbers split by a comma: ').split(',')))
 
@@ -63,24 +59,17 @@ def main() -> None:
 
     start = perf_counter()
     factorize(*numbers)
-    logger.debug(MESSAGE, 'Synchronous', perf_counter() - start)
+    logger.info(MESSAGE, 'Synchronous', perf_counter() - start)
 
-    processes_count = min(len(numbers), cpu_count())
-    logger.debug(f'Processes: {processes_count}')
+    processes = min(len(numbers), cpu_count())
+    logger.info(f'Processes: {processes}')
 
     start = perf_counter()
 
-    processes: list[Process] = []
-    semaphore = Semaphore(processes_count)
+    with ProcessPoolExecutor(processes) as executor:
+        executor.map(factorize, numbers)
 
-    for number in numbers:
-        process = Process(target=worker, args=(number, semaphore))
-        process.start()
-        processes.append(process)
-
-    [process.join() for process in processes]
-
-    logger.debug(MESSAGE, 'Asynchronous', perf_counter() - start)
+    logger.info(MESSAGE, 'Asynchronous', perf_counter() - start)
 
 
 if __name__ == '__main__':
